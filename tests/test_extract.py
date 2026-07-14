@@ -52,6 +52,14 @@ class TestExtractFrameInfo(unittest.TestCase):
         result = extract_frame_info("just a group ride photo, no bikes for sale", client=client)
         self.assertEqual(result, [])
 
+    def test_strips_markdown_code_fence(self):
+        payload = [{"brand": "Ross", "model": "Mt Hood", "frame_size": None, "price": "$400", "condition": None}]
+        fenced = "```json\n" + json.dumps(payload) + "\n```"
+        client = _mock_client(fenced)
+        result = extract_frame_info("Ross mt hood for sale $400", client=client)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].brand, "Ross")
+
     def test_malformed_json_returns_empty(self):
         client = _mock_client("not valid json")
         result = extract_frame_info("some caption", client=client)

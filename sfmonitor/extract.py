@@ -6,10 +6,15 @@ much -- an LLM call handles messy real-world phrasing instead.
 """
 import json
 import os
+import re
 from dataclasses import dataclass
 from typing import List, Optional
 
 from anthropic import Anthropic
+
+# Claude sometimes wraps its JSON response in a markdown code fence despite
+# being told not to -- strip ```json / ``` fences before parsing.
+_CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 
 API_KEY_ENV_VAR = "ANTHROPIC_API_KEY"
 MODEL = "claude-sonnet-5"
@@ -61,7 +66,7 @@ def extract_frame_info(caption: str, client: Optional[Anthropic] = None) -> List
     text_block = next((block for block in response.content if block.type == "text"), None)
     if text_block is None:
         return []
-    text = text_block.text.strip()
+    text = _CODE_FENCE_RE.sub("", text_block.text.strip()).strip()
     try:
         items = json.loads(text)
     except json.JSONDecodeError:
