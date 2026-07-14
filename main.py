@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
 
 from sfmonitor import apify_client, extract, ig_state, known_frames, matcher, sd_state, sheets
 from sfmonitor.craigslist import search_craigslist
@@ -138,4 +139,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    load_dotenv(ROOT / ".env")
     sys.exit(main())

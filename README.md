@@ -36,17 +36,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 cp config.example.yaml config.yaml   # fill in Instagram profile, SD zip/radius
+cp .env.example .env                 # fill in the credentials below
 ```
+
+All secrets below go in `.env` (gitignored, loaded automatically by
+`main.py` -- never pasted into chat or committed).
 
 ### Apify (Instagram scraping)
 
 1. Sign up free at [apify.com](https://apify.com) (no credit card needed).
 2. Settings -> Integrations/API -> copy your personal API token.
-3. `export APIFY_API_TOKEN=your-token-here`
+3. Set `APIFY_API_TOKEN` in `.env`.
 
 ### Anthropic API (caption parsing)
 
-`export ANTHROPIC_API_KEY=your-key-here`
+Set `ANTHROPIC_API_KEY` in `.env` (from [console.anthropic.com](https://console.anthropic.com) -> API Keys).
 
 ### Google Sheets (output)
 
@@ -64,11 +68,9 @@ land in a place the script can write to non-interactively.
    account's service account has zero personal Drive quota and can't own a
    new file itself -- writing into a spreadsheet you already own and shared
    with it is the reliable path.
-4. Set:
-   ```bash
-   export GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/service-account.json
-   export GOOGLE_SHEET_ID=1AbCdEfGhIjKlMnOpQrStUvWxYz
-   ```
+4. Set `GOOGLE_SERVICE_ACCOUNT_JSON` (path to the downloaded key file) and
+   `GOOGLE_SHEET_ID` (the id in your spreadsheet's URL, between `/d/` and
+   `/edit`) in `.env`.
 
 ### Facebook Marketplace (optional)
 
