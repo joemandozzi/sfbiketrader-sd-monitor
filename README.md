@@ -99,11 +99,29 @@ python3 main.py
 
 ### Run it on a schedule
 
-Use cron or `launchd` to run `main.py` periodically -- e.g. a `launchd`
-agent every few hours, following the same pattern as
-[bike-scraper](https://github.com/joemandozzi/bike-scraper)'s
-`launchd/install.sh`. Your machine needs to be on and awake for a scheduled
-run to fire.
+```bash
+./launchd/install.sh
+```
+
+Installs a `launchd` agent (same pattern as
+[bike-scraper](https://github.com/joemandozzi/bike-scraper)) that runs
+`main.py` once each time you log in / start your laptop -- matching how you
+actually use this machine, rather than a fixed background interval. Logs go
+to `data/monitor.log`.
+
+**Your laptop needs to be on and awake for a run to fire** -- if it's asleep
+or off, that check is simply skipped until next login. If you leave your
+laptop logged in and awake for multiple days straight without restarting,
+this alone won't re-fire daily; edit the `.plist.template` to add a
+`StartCalendarInterval` (an `Hour` key) if you want a guaranteed daily run
+regardless of login frequency, then re-run `install.sh`.
+
+To uninstall:
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.sfbiketrader-sd-monitor.plist
+rm ~/Library/LaunchAgents/com.sfbiketrader-sd-monitor.plist
+```
 
 ## Tests
 

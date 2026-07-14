@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.sfbiketrader-sd-monitor</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__PYTHON_BIN__</string>
+        <string>-u</string>
+        <string>__REPO_DIR__/main.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>__REPO_DIR__</string>
+
+    <!-- Runs once whenever this job (re)loads -- i.e. at login/laptop
+    startup, not on a fixed background interval. If your laptop stays
+    awake and logged in for multiple days straight, this alone won't
+    re-fire daily; add a StartCalendarInterval (Hour key) if you want a
+    guaranteed daily run regardless of login frequency. -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>__REPO_DIR__/data/monitor.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__REPO_DIR__/data/monitor.log</string>
+</dict>
+</plist>
