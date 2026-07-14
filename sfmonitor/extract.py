@@ -56,7 +56,12 @@ def extract_frame_info(caption: str, client: Optional[Anthropic] = None) -> List
         max_tokens=1024,
         messages=[{"role": "user", "content": EXTRACTION_PROMPT.format(caption=caption)}],
     )
-    text = response.content[0].text.strip()
+    # The model may emit a leading ThinkingBlock before its text response --
+    # find the actual text block rather than assuming content[0] is it.
+    text_block = next((block for block in response.content if block.type == "text"), None)
+    if text_block is None:
+        return []
+    text = text_block.text.strip()
     try:
         items = json.loads(text)
     except json.JSONDecodeError:

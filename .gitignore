@@ -13,3 +13,4 @@ data/
 *service-account*.json
 credentials.json
 GOOGLE_SERVICE_ACCOUNT*.json
+.DS_Store

@@ -9,7 +9,7 @@ from sfmonitor.extract import FrameMention, extract_frame_info
 def _mock_client(response_text: str) -> MagicMock:
     client = MagicMock()
     client.messages.create.return_value = SimpleNamespace(
-        content=[SimpleNamespace(text=response_text)]
+        content=[SimpleNamespace(type="text", text=response_text)]
     )
     return client
 
@@ -54,6 +54,27 @@ class TestExtractFrameInfo(unittest.TestCase):
 
     def test_malformed_json_returns_empty(self):
         client = _mock_client("not valid json")
+        result = extract_frame_info("some caption", client=client)
+        self.assertEqual(result, [])
+
+    def test_skips_leading_thinking_block(self):
+        payload = [{"brand": "Trek", "model": "520", "frame_size": None, "price": None, "condition": None}]
+        client = MagicMock()
+        client.messages.create.return_value = SimpleNamespace(
+            content=[
+                SimpleNamespace(type="thinking", thinking="reasoning about the caption..."),
+                SimpleNamespace(type="text", text=json.dumps(payload)),
+            ]
+        )
+        result = extract_frame_info("Trek 520 for sale", client=client)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].brand, "Trek")
+
+    def test_no_text_block_returns_empty(self):
+        client = MagicMock()
+        client.messages.create.return_value = SimpleNamespace(
+            content=[SimpleNamespace(type="thinking", thinking="reasoning only, no text block")]
+        )
         result = extract_frame_info("some caption", client=client)
         self.assertEqual(result, [])
 

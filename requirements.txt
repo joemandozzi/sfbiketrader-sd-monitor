@@ -1,6 +1,6 @@
 requests>=2.31
 beautifulsoup4>=4.12
-apify-client>=1.7
+apify-client>=3.0
 anthropic>=0.40
 gspread>=6.0
 google-auth>=2.28

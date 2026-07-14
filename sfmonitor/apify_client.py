@@ -47,7 +47,7 @@ def fetch_posts(profile_url: str, limit: int, client: Optional[ApifyClient] = No
     }
     run = client.actor(ACTOR_ID).call(run_input=run_input)
     posts = []
-    for item in client.dataset(run["defaultDatasetId"]).iterate_items():
+    for item in client.dataset(run.default_dataset_id).iterate_items():
         posts.append(
             RawPost(
                 post_id=item["id"],
