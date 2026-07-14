@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+config.yaml
+.env
+data/
+
+# Google service-account credentials -- never commit these
+*service-account*.json
+credentials.json
+GOOGLE_SERVICE_ACCOUNT*.json

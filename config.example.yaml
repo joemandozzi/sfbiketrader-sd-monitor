@@ -1,0 +1,16 @@
+# Copy this file to config.yaml and fill in your own values.
+# config.yaml is gitignored so nothing local leaks into the repo.
+
+instagram:
+  profile: "sfbiketrader"
+  fetch_limit: 25  # max recent posts to fetch per run
+
+san_diego:
+  zip: "92101"
+  radius_miles: 50
+
+# Also search Facebook Marketplace in addition to Craigslist. Off by
+# default -- requires Playwright + Chromium and a one-time interactive
+# login (see README.md: `python3 facebook_login.py`).
+facebook:
+  enabled: false
