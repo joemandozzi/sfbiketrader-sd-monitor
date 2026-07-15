@@ -126,6 +126,19 @@ own 50-mile max search radius regardless of `san_diego.radius_miles`.
 python3 main.py
 ```
 
+### Manual refresh (one side only)
+
+```bash
+python3 main.py --only ig   # just the Instagram scrape + Frame Counts recompute
+python3 main.py --only sd   # just the Craigslist/Facebook/OfferUp search
+```
+
+There's no live button in the Sheet -- Google Sheets/Apps Script has no
+access to a local machine, so a real "click to refresh" would need a
+server or tunnel running on your laptop at all times. Simpler for now:
+the exact commands above are also written to an "Instructions" tab
+created automatically in the Sheet itself.
+
 ### Run it on a schedule
 
 ```bash

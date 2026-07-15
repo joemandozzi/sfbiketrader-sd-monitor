@@ -37,6 +37,23 @@ MATCHES_HEADER = ["date_added", "matched_brand", "matched_model", "source", "tit
 FRAME_COUNTS_TAB = "Frame Counts"
 FRAME_COUNTS_HEADER = ["brand", "model", "count", "min_price", "max_price"]
 
+INSTRUCTIONS_TAB = "Instructions"
+INSTRUCTIONS_ROWS = [
+    ["SF Bike Trader / San Diego Monitor -- manual refresh"],
+    [""],
+    ["There's no live button in this Sheet (Google Sheets can't run code on"],
+    ["a local machine) -- run these commands in Terminal instead."],
+    [""],
+    ["Refresh \"SF Bike Trader Frames\" (pulls new Instagram posts):"],
+    ["cd ~/sfbiketrader-sd-monitor && source .venv/bin/activate && python main.py --only ig"],
+    [""],
+    ["Refresh \"San Diego Matches\" (searches Craigslist/Facebook/OfferUp):"],
+    ["cd ~/sfbiketrader-sd-monitor && source .venv/bin/activate && python main.py --only sd"],
+    ["Note: this one can take 30-60+ minutes -- it searches every known frame across all three sources."],
+    [""],
+    ["Run with no flags (python main.py) to do both in one go."],
+]
+
 
 class SheetsConfigError(RuntimeError):
     """Raised when the service-account credentials or sheet aren't configured."""
@@ -143,6 +160,17 @@ class SheetHandles:
         self.frames_ws = _get_or_create_worksheet(self.spreadsheet, FRAMES_TAB, FRAMES_HEADER)
         self.matches_ws = _get_or_create_worksheet(self.spreadsheet, MATCHES_TAB, MATCHES_HEADER)
         self.frame_counts_ws = _get_or_create_worksheet(self.spreadsheet, FRAME_COUNTS_TAB, FRAME_COUNTS_HEADER)
+        self._ensure_instructions_tab()
+
+    def _ensure_instructions_tab(self) -> None:
+        """Create the Instructions tab with its static content the first
+        time only -- never touches it again, so it's safe for a user to
+        add their own notes below it.
+        """
+        if any(ws.title == INSTRUCTIONS_TAB for ws in self.spreadsheet.worksheets()):
+            return
+        ws = self.spreadsheet.add_worksheet(title=INSTRUCTIONS_TAB, rows="20", cols="1")
+        _with_retry(ws.update, INSTRUCTIONS_ROWS)
 
     @property
     def url(self) -> str:

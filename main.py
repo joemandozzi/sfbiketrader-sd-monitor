@@ -5,8 +5,11 @@ Facebook Marketplace, and OfferUp (the latter two if enabled in
 config.yaml) for every distinct frame ever seen, logging new matches to a
 second tab.
 
-Run manually with `python3 main.py`, or schedule it (see README.md).
+Run manually with `python3 main.py`, schedule it (see README.md), or run
+just one half with `--only ig` / `--only sd` (see the "Instructions" tab
+in the Sheet for the exact commands to trigger a manual refresh).
 """
+import argparse
 import sys
 import time
 from contextlib import ExitStack
@@ -136,7 +139,24 @@ def search_san_diego(frames, config, sheet: sheets.SheetHandles):
     return total_new
 
 
-def main() -> int:
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Refresh the SF Bike Trader / San Diego monitor Google Sheet."
+    )
+    parser.add_argument(
+        "--only",
+        choices=["ig", "sd"],
+        help='Run only the Instagram scrape ("ig") or only the San Diego '
+        'search ("sd") instead of both. Omit to run the full pipeline.',
+    )
+    return parser
+
+
+def main(argv=None) -> int:
+    args = build_arg_parser().parse_args(argv)
+    run_ig = args.only in (None, "ig")
+    run_sd = args.only in (None, "sd")
+
     run_started = datetime.now()
     print(f"=== run started {run_started.isoformat(timespec='seconds')} ===")
 
@@ -148,20 +168,23 @@ def main() -> int:
         return 1
     print(f"Google Sheet: {sheet.url}")
 
-    try:
-        all_frames = collect_ig_frames(config, sheet)
-    except (apify_client.ApifyConfigError, extract.ExtractConfigError) as exc:
-        print(f"Error: {exc}")
-        return 1
-
-    sheet.write_frame_counts()
-
-    if all_frames:
-        print(f"Searching San Diego for {len(all_frames)} known frame(s)...")
-        total_new = search_san_diego(all_frames, config, sheet)
-        print(f"{total_new} new San Diego match(es) logged.")
+    if run_ig:
+        try:
+            all_frames = collect_ig_frames(config, sheet)
+        except (apify_client.ApifyConfigError, extract.ExtractConfigError) as exc:
+            print(f"Error: {exc}")
+            return 1
+        sheet.write_frame_counts()
     else:
-        print("No known frames yet -- nothing to search San Diego for.")
+        all_frames = known_frames.load_known_frames()
+
+    if run_sd:
+        if all_frames:
+            print(f"Searching San Diego for {len(all_frames)} known frame(s)...")
+            total_new = search_san_diego(all_frames, config, sheet)
+            print(f"{total_new} new San Diego match(es) logged.")
+        else:
+            print("No known frames yet -- nothing to search San Diego for.")
 
     print(f"=== run finished {datetime.now().isoformat(timespec='seconds')} ===")
     return 0
