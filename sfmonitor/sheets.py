@@ -39,19 +39,14 @@ FRAME_COUNTS_HEADER = ["brand", "model", "count", "min_price", "max_price"]
 
 INSTRUCTIONS_TAB = "Instructions"
 INSTRUCTIONS_ROWS = [
-    ["SF Bike Trader / San Diego Monitor -- manual refresh"],
+    ["How this sheet updates"],
     [""],
-    ["There's no live button in this Sheet (Google Sheets can't run code on"],
-    ["a local machine) -- run these commands in Terminal instead."],
+    ["Joe updates this sheet from his computer -- there's nothing to click"],
+    ["here, and nothing anyone else needs to do."],
     [""],
-    ["Refresh \"SF Bike Trader Frames\" (pulls new Instagram posts):"],
+    ["(Joe's notes: run these two commands to refresh each tab.)"],
     ["cd ~/sfbiketrader-sd-monitor && source .venv/bin/activate && python main.py --only ig"],
-    [""],
-    ["Refresh \"San Diego Matches\" (searches Craigslist/Facebook/OfferUp):"],
     ["cd ~/sfbiketrader-sd-monitor && source .venv/bin/activate && python main.py --only sd"],
-    ["Note: this one can take 30-60+ minutes -- it searches every known frame across all three sources."],
-    [""],
-    ["Run with no flags (python main.py) to do both in one go."],
 ]
 
 
