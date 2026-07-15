@@ -9,6 +9,10 @@ Return.
 If anything doesn't look like what's described here, stop and ask rather
 than guessing -- it's easy to fix if we catch it early.
 
+(If you have Claude Code installed, `INSTALL_PROMPT.md` in this repo does
+this same setup for you interactively -- you can use that instead and
+skip this whole document.)
+
 ## 1. Open Terminal
 
 Press `Cmd + Space` to open Spotlight search, type `Terminal`, press
@@ -118,8 +122,8 @@ Fill in:
 - `APIFY_API_TOKEN` -- from step 5
 - `ANTHROPIC_API_KEY` -- from step 6
 - `GOOGLE_SERVICE_ACCOUNT_JSON` -- the full path to the file from step 7
-- `GOOGLE_SHEET_ID` -- ask Joe for this (the long id in the shared
-  spreadsheet's URL, between `/d/` and `/edit`)
+- `GOOGLE_SHEET_ID` -- `1_F4eCWdlerA0RN4FlhEsAHNzBDsmZ-Q5pmfwnBEmbtY`
+  (the shared sheet Joe already uses)
 
 Save and close the file (`Cmd + S`, then close the window).
 
@@ -129,11 +133,26 @@ Now open `config.yaml` the same way:
 open -e config.yaml
 ```
 
-Ask Joe for the exact values he's using for `instagram.profile` and
-`san_diego.zip` / `radius_miles`, and set yours to match (so you're
-searching the same account/area). Leave `facebook.enabled` as `false` for
-now -- that one needs an extra one-time step you can do later if you want
-it.
+Set these values to match what Joe's using (so you're searching the same
+account/area):
+
+```yaml
+instagram:
+  profile: "sfbiketrader"
+
+san_diego:
+  zip: "92101"
+  radius_miles: 50
+
+offerup:
+  enabled: true
+
+facebook:
+  enabled: false
+```
+
+Leave `facebook.enabled` as `false` for now -- that one needs an extra
+one-time login step you can do later if you want it.
 
 ## 9. Run it
 
