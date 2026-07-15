@@ -8,7 +8,10 @@ Google Sheet with three tabs:
 - **SF Bike Trader Frames** -- every frame mention extracted from IG
   captions (brand, model, size, price, condition, post link).
 - **San Diego Matches** -- new San Diego listings found for those same
-  frames (source, title, price, location, link).
+  frames (source, title, price, location, link), sorted newest-first by
+  the date this tool found each match. (None of the three sources
+  reliably expose the listing's actual posted date in search results, so
+  this is "date added," not "date listed.")
 - **Frame Counts** -- distinct (brand, model) pairs the account has ever
   posted, ranked by how many times each has appeared, plus the min/max
   asking price seen for that frame. Fully recomputed every run (a derived

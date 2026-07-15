@@ -8,6 +8,7 @@ sheet with the service account's email.
 import os
 import re
 import time
+from datetime import datetime, timezone
 from typing import Optional
 
 import gspread
@@ -31,7 +32,7 @@ FRAMES_TAB = "SF Bike Trader Frames"
 FRAMES_HEADER = ["post_timestamp", "post_url", "brand", "model", "frame_size", "price", "condition"]
 
 MATCHES_TAB = "San Diego Matches"
-MATCHES_HEADER = ["matched_brand", "matched_model", "source", "title", "price", "location", "url"]
+MATCHES_HEADER = ["date_added", "matched_brand", "matched_model", "source", "title", "price", "location", "url"]
 
 FRAME_COUNTS_TAB = "Frame Counts"
 FRAME_COUNTS_HEADER = ["brand", "model", "count", "min_price", "max_price"]
@@ -151,7 +152,15 @@ class SheetHandles:
         _append_with_retry(self.frames_ws, [post_timestamp, post_url, brand, model, frame_size, price, condition])
 
     def append_match_row(self, matched_brand, matched_model, source, title, price, location, url) -> None:
-        _append_with_retry(self.matches_ws, [matched_brand, matched_model, source, title, price, location, url])
+        # None of the three sources reliably expose a real "listed" date in
+        # their search results (Facebook/OfferUp don't have one at all;
+        # Craigslist only on the per-listing detail page), so this stamps
+        # when *this tool* first found the match instead -- consistent
+        # across all sources, no extra per-listing requests needed.
+        date_added = datetime.now(timezone.utc).isoformat()
+        _append_with_retry(
+            self.matches_ws, [date_added, matched_brand, matched_model, source, title, price, location, url]
+        )
 
     def write_frame_counts(self) -> None:
         """Recompute the distinct-frame leaderboard from scratch, ordered by
