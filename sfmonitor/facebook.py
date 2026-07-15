@@ -6,13 +6,14 @@ plain URL params:
 
     https://www.facebook.com/marketplace/category/bicycles?query=<kw>&radius=<mi>
 
-That IP-based location turned out to be unreliable in practice -- it
-resolved correctly sometimes and to a city hundreds of miles off other
-times, on the same network. Facebook's location picker requires a login
-to use, so this uses a persisted login session (see facebook_login.py,
-run once interactively) which gets a stable, correct location tied to
-the account instead of a flaky per-request IP guess. Falls back to
-anonymous access if no session file exists.
+That IP-based location turned out to be unreliable in practice -- on
+2026-07-14, running from a Bay Area machine while targeting San Diego, it
+silently returned ~200 NorCal listings mislabeled as San Diego matches.
+Facebook's location picker requires a login to use, so this requires a
+persisted login session (see facebook_login.py, run once interactively)
+which gets a stable, correct location tied to the account instead of a
+flaky per-request IP guess. FacebookSession refuses to run at all without
+one -- see FacebookLoginRequiredError.
 
 That session file (data/fb_session.json, gitignored) is effectively a
 login credential for that Facebook account, stored in plaintext on disk.
@@ -71,6 +72,10 @@ def _is_listing_node(node):
     return "marketplace_listing_title" in node and "id" in node
 
 
+class FacebookLoginRequiredError(RuntimeError):
+    """Raised when no login session exists yet."""
+
+
 class FacebookSession:
     """Keeps one headless browser alive for an entire run, since launching
     Chromium per request would be far slower than reusing a context across
@@ -87,10 +92,21 @@ class FacebookSession:
         self._context = None
 
     def __enter__(self):
+        # Without a logged-in session, Facebook resolves location from the
+        # machine's IP address rather than any zip/radius we pass in -- on
+        # 2026-07-14 this silently returned ~200 listings from hundreds of
+        # miles away (Bay Area, on a machine searching for San Diego)
+        # mislabeled as real matches. Refuse to run rather than repeat that
+        # instead of falling back to an unreliable "anonymous" mode.
+        if not (self.session_path and self.session_path.exists()):
+            raise FacebookLoginRequiredError(
+                f"No Facebook login session found at {self.session_path}. Run "
+                "`python3 facebook_login.py` once to log in -- without it, Facebook "
+                "resolves location from this machine's IP, not the configured zip, "
+                "and results can't be trusted as being near your target area."
+            )
         self._browser = self._playwright.chromium.launch(headless=True)
-        context_kwargs = {"locale": "en-US", "user_agent": USER_AGENT}
-        if self.session_path and self.session_path.exists():
-            context_kwargs["storage_state"] = str(self.session_path)
+        context_kwargs = {"locale": "en-US", "user_agent": USER_AGENT, "storage_state": str(self.session_path)}
         self._context = self._browser.new_context(**context_kwargs)
         return self
 

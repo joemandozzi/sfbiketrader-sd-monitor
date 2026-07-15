@@ -88,9 +88,12 @@ def search_san_diego(frames, config, sheet: sheets.SheetHandles):
             playwright = stack.enter_context(sync_playwright())
 
             if facebook_enabled:
-                from sfmonitor.facebook import FacebookSession
+                from sfmonitor.facebook import FacebookLoginRequiredError, FacebookSession
 
-                fb_session = stack.enter_context(FacebookSession(playwright))
+                try:
+                    fb_session = stack.enter_context(FacebookSession(playwright))
+                except FacebookLoginRequiredError as exc:
+                    print(f"  [warn] skipping facebook this run: {exc}", file=sys.stderr)
             if offerup_enabled:
                 from sfmonitor.offerup import OfferUpSession
 
