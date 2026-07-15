@@ -146,8 +146,9 @@ python3 main.py --only sd   # just the Craigslist/Facebook/OfferUp search
 There's no live button in the Sheet -- Google Sheets/Apps Script has no
 access to a local machine, so a real "click to refresh" would need a
 server or tunnel running on your laptop at all times. Simpler for now:
-the exact commands above are also written to an "Instructions" tab
-created automatically in the Sheet itself.
+the Sheet itself has two tabs created automatically, "First Time Install"
+and "Refresh Instructions," covering the same ground as
+`INSTALL_PROMPT.md`/`SETUP.md`/`REFRESH.md`.
 
 ### Run it on a schedule
 

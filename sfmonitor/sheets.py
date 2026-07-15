@@ -37,23 +37,113 @@ MATCHES_HEADER = ["date_added", "matched_brand", "matched_model", "source", "tit
 FRAME_COUNTS_TAB = "Frame Counts"
 FRAME_COUNTS_HEADER = ["brand", "model", "count", "min_price", "max_price"]
 
-INSTRUCTIONS_TAB = "Instructions"
-INSTRUCTIONS_ROWS = [
-    ["How this sheet updates"],
+INSTALL_TAB = "First Time Install"
+INSTALL_ROWS = [
+    ["First-time setup"],
     [""],
-    ["This updates from whoever's computer has it set up (currently Joe's"],
-    ["and his brother-in-law's) -- there's no button in the Sheet itself."],
+    ["This Sheet is updated by whoever has this project set up on their own"],
+    ["computer -- there's no button in the Sheet itself. To set it up on"],
+    ["your own computer, copy the block below and paste it as a message to"],
+    ["Claude Code (https://claude.com/product/claude-code). It'll ask what"],
+    ["you already know and walk you through the rest either way."],
     [""],
-    ["First-time setup: see the GitHub repo --"],
+    ["Don't have Claude Code? See SETUP.md in the GitHub repo instead:"],
     ["https://github.com/joemandozzi/sfbiketrader-sd-monitor"],
-    ["  - INSTALL_PROMPT.md: a ready-to-paste prompt if you have Claude Code"],
-    ["  - SETUP.md: the same setup, done by hand instead"],
-    ["  - REFRESH.md: the day-to-day commands once you're set up"],
     [""],
-    ["Once set up, run these two commands in Terminal to refresh each tab:"],
+    ["--- copy everything below this line ---"],
+    [""],
+    ["Set up the sfbiketrader-sd-monitor project on this computer for me:"],
+    ["https://github.com/joemandozzi/sfbiketrader-sd-monitor"],
+    [""],
+    ["First, ask me how familiar I am with things like Terminal, git/GitHub,"],
+    ["and installing developer tools. Based on my answer:"],
+    ["- If I'm experienced: move through setup quickly, just flagging each"],
+    ["  step before you run it."],
+    ["- If I'm new to this: don't assume I know anything. Explain what"],
+    ["  Terminal is and how to open it, what a \"repository\" is, what a"],
+    ["  Python virtual environment is for, etc., in plain language, before"],
+    ["  each step -- and check in with me before moving on if a step"],
+    ["  doesn't look like what you described."],
+    [""],
+    ["Here's the situation: this is a personal tool that tracks bikes"],
+    ["posted for sale on an Instagram account and cross-references them"],
+    ["against Craigslist/Facebook/OfferUp listings in San Diego, writing"],
+    ["everything to a shared Google Sheet. I need my own local copy set up"],
+    ["so I can trigger refreshes myself, using the same shared Sheet"],
+    ["someone else already set up."],
+    [""],
+    ["Please:"],
+    [""],
+    ["1. Check whether I have git and python3 installed (git --version,"],
+    ["   python3 --version). If not, help me install them (on a Mac: Xcode"],
+    ["   Command Line Tools for git -- running git --version with git"],
+    ["   missing triggers a one-click install prompt; python.org's"],
+    ["   installer for Python)."],
+    [""],
+    ["2. Clone the repo above into my home folder, then set up a Python"],
+    ["   virtual environment and install its dependencies (there's a"],
+    ["   requirements.txt)."],
+    [""],
+    ["3. Ask me to go get two things myself (you can't do these steps for"],
+    ["   me):"],
+    ["   - A free Apify account and API token (apify.com -> sign up ->"],
+    ["     Settings -> Integrations/API -> copy the token). This is what"],
+    ["     reads the Instagram posts."],
+    ["   - A free Anthropic API key (console.anthropic.com -> sign up ->"],
+    ["     API Keys). This is what reads each caption and figures out the"],
+    ["     bike brand/model/price."],
+    ["   Wait for me to paste both back to you."],
+    [""],
+    ["4. Ask me where I saved the Google service-account credentials file"],
+    ["   (something like service-account.json) that whoever manages the"],
+    ["   shared spreadsheet sent me -- I'll give you the full path. This"],
+    ["   is a password-like credential, so keep it out of any commit if"],
+    ["   you ever touch git status/add, and don't print its contents."],
+    [""],
+    ["5. Create .env (copy from .env.example) and fill in:"],
+    ["   - APIFY_API_TOKEN = the token from step 3"],
+    ["   - ANTHROPIC_API_KEY = the key from step 3"],
+    ["   - GOOGLE_SERVICE_ACCOUNT_JSON = the path from step 4"],
+    ["   - GOOGLE_SHEET_ID = 1_F4eCWdlerA0RN4FlhEsAHNzBDsmZ-Q5pmfwnBEmbtY"],
+    [""],
+    ["6. Create config.yaml (copy from config.example.yaml) and set:"],
+    ["   - instagram.profile = \"sfbiketrader\""],
+    ["   - san_diego.zip = \"92101\""],
+    ["   - san_diego.radius_miles = 50"],
+    ["   - offerup.enabled = true"],
+    ["   - facebook.enabled = false (can be set up later -- it needs its"],
+    ["     own one-time login step, see facebook_login.py)"],
+    [""],
+    ["7. Run python main.py --only ig as a test, show me the output, and"],
+    ["   confirm it worked (it should print something like \"Fetched N"],
+    ["   post(s)\" with no error at the end)."],
+    [""],
+    ["8. Tell me about REFRESH.md in the repo -- that's what I'll use day"],
+    ["   to day after this initial setup."],
+    [""],
+    ["Ask me questions any time you're unsure rather than assuming. Go."],
+    [""],
+    ["--- copy everything above this line ---"],
+]
+
+REFRESH_TAB = "Refresh Instructions"
+REFRESH_ROWS = [
+    ["Refresh instructions"],
+    [""],
+    ["Already set up? Run these two commands in Terminal to refresh each"],
+    ["tab. (First time? See the \"First Time Install\" tab instead.)"],
+    [""],
     ["cd ~/sfbiketrader-sd-monitor && source .venv/bin/activate && python main.py --only ig"],
+    ["  -> checks Instagram for new posts, logs them, usually under a minute"],
+    [""],
     ["cd ~/sfbiketrader-sd-monitor && source .venv/bin/activate && python main.py --only sd"],
-    ["(The second one takes 30-60+ minutes -- that's normal.)"],
+    ["  -> searches San Diego listings for every known frame -- this one"],
+    ["  takes 30-60+ minutes, that's normal, it prints progress as it goes"],
+    [""],
+    ["Neither of these deletes or overwrites existing rows in the Frames or"],
+    ["Matches tabs -- they only add rows for things not already logged."],
+    ["(The Frame Counts tab is the one exception: it's a live leaderboard"],
+    ["recomputed fresh from the Frames tab every run, not an append log.)"],
 ]
 
 
@@ -173,17 +263,18 @@ class SheetHandles:
         self.frames_ws = _get_or_create_worksheet(self.spreadsheet, FRAMES_TAB, FRAMES_HEADER)
         self.matches_ws = _get_or_create_worksheet(self.spreadsheet, MATCHES_TAB, MATCHES_HEADER)
         self.frame_counts_ws = _get_or_create_worksheet(self.spreadsheet, FRAME_COUNTS_TAB, FRAME_COUNTS_HEADER)
-        self._ensure_instructions_tab()
+        self._ensure_static_tab(INSTALL_TAB, INSTALL_ROWS)
+        self._ensure_static_tab(REFRESH_TAB, REFRESH_ROWS)
 
-    def _ensure_instructions_tab(self) -> None:
-        """Create the Instructions tab with its static content the first
-        time only -- never touches it again, so it's safe for a user to
-        add their own notes below it.
+    def _ensure_static_tab(self, title: str, rows: list) -> None:
+        """Create a static-content tab (install/refresh instructions) the
+        first time only -- never touches it again, so it's safe for a user
+        to add their own notes below it.
         """
-        if any(ws.title == INSTRUCTIONS_TAB for ws in self.spreadsheet.worksheets()):
+        if any(ws.title == title for ws in self.spreadsheet.worksheets()):
             return
-        ws = self.spreadsheet.add_worksheet(title=INSTRUCTIONS_TAB, rows="20", cols="1")
-        _with_retry(ws.update, INSTRUCTIONS_ROWS)
+        ws = self.spreadsheet.add_worksheet(title=title, rows=str(len(rows) + 5), cols="1")
+        _with_retry(ws.update, rows)
 
     @property
     def url(self) -> str:

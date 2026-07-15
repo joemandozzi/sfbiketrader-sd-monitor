@@ -94,14 +94,14 @@ brand/model/price.
    up.
 2. Go to **API Keys**, create a new key, and copy it.
 
-## 7. Get the shared credentials file from Joe
+## 7. Get the shared credentials file
 
-Joe will send you a file (something like `service-account.json`) through
-a secure way (AirDrop, Signal, etc. -- **not** email or text) -- this is a
-password-like credential for writing to the shared Google Sheet, so treat
-it like one. Save it somewhere you'll remember, e.g. your Documents
-folder, and note the full path (e.g.
-`/Users/yourname/Documents/service-account.json`).
+Whoever manages the shared spreadsheet will send you a file (something
+like `service-account.json`) through a secure channel (AirDrop, Signal,
+etc. -- **not** email or text) -- this is a password-like credential for
+writing to the shared Google Sheet, so treat it like one. Save it
+somewhere you'll remember, e.g. your Documents folder, and note the full
+path (e.g. `/Users/yourname/Documents/service-account.json`).
 
 ## 8. Fill in your settings
 
@@ -123,7 +123,7 @@ Fill in:
 - `ANTHROPIC_API_KEY` -- from step 6
 - `GOOGLE_SERVICE_ACCOUNT_JSON` -- the full path to the file from step 7
 - `GOOGLE_SHEET_ID` -- `1_F4eCWdlerA0RN4FlhEsAHNzBDsmZ-Q5pmfwnBEmbtY`
-  (the shared sheet Joe already uses)
+  (the shared sheet)
 
 Save and close the file (`Cmd + S`, then close the window).
 
@@ -133,7 +133,7 @@ Now open `config.yaml` the same way:
 open -e config.yaml
 ```
 
-Set these values to match what Joe's using (so you're searching the same
+Set these values to match the shared setup (so you're searching the same
 account/area):
 
 ```yaml
