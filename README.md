@@ -143,6 +143,13 @@ python3 main.py --only ig   # just the Instagram scrape + Frame Counts recompute
 python3 main.py --only sd   # just the Craigslist/Facebook/OfferUp search
 ```
 
+These two are **completely independent** -- run either one without the
+other, in any order. `--only ig` is the only one that calls Apify (so it's
+the one that breaks if your Apify account/credit has an issue); `--only
+sd` never touches Instagram/Apify at all, it just searches San Diego for
+whatever frames are already logged, so it keeps working even if the
+Instagram side is broken or stale.
+
 There's no live button in the Sheet -- Google Sheets/Apps Script has no
 access to a local machine, so a real "click to refresh" would need a
 server or tunnel running on your laptop at all times. Simpler for now:
