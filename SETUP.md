@@ -1,0 +1,167 @@
+# Setup guide (for Mac, no coding experience needed)
+
+This walks through getting this tool running on your own Mac, step by
+step. It'll take maybe 20-30 minutes the first time. Everything here is
+typed into an app called **Terminal** -- it looks intimidating but you're
+just copying and pasting each block below, one at a time, and pressing
+Return.
+
+If anything doesn't look like what's described here, stop and ask rather
+than guessing -- it's easy to fix if we catch it early.
+
+## 1. Open Terminal
+
+Press `Cmd + Space` to open Spotlight search, type `Terminal`, press
+Return. A plain window with white or black background and blinking cursor
+opens -- that's it, that's Terminal.
+
+## 2. Check if you have the basics installed
+
+Paste this in and press Return:
+
+```bash
+git --version
+```
+
+- If you see something like `git version 2.x.x`, you're good, skip to
+  step 3.
+- If a popup appears asking to install "Command Line Tools," click
+  **Install**, wait for it to finish (a few minutes), then run the same
+  command again to confirm.
+
+Next, check Python:
+
+```bash
+python3 --version
+```
+
+You want to see `Python 3.10` or higher. If you get an error instead, go
+to [python.org/downloads](https://www.python.org/downloads/), download the
+latest macOS installer, run it (click through like any other app
+installer), then come back and run `python3 --version` again.
+
+## 3. Download the code
+
+Pick where you want this to live -- your home folder is simplest. Paste:
+
+```bash
+cd ~
+git clone https://github.com/joemandozzi/sfbiketrader-sd-monitor.git
+cd sfbiketrader-sd-monitor
+```
+
+This creates a folder called `sfbiketrader-sd-monitor` and moves you into
+it. Every command from here on assumes you're still in this folder --
+if you ever close Terminal and reopen it later, run `cd
+~/sfbiketrader-sd-monitor` first to get back here.
+
+## 4. Set up Python
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+The last command installs everything this tool needs -- it'll print a lot
+of text, that's normal. If it ends without a red "error" message, it
+worked.
+
+**Every time you reopen Terminal to use this tool later**, you need to run
+`source .venv/bin/activate` again first (from inside the
+`sfbiketrader-sd-monitor` folder) before the other commands will work.
+
+## 5. Get your own Apify account (free)
+
+This is the service that reads the Instagram posts.
+
+1. Go to [apify.com](https://apify.com) and sign up (Google/GitHub login
+   works, no credit card needed).
+2. Once logged in, go to **Settings -> Integrations** (or **API**) and
+   copy your personal API token -- a long string of letters/numbers.
+3. Keep it somewhere safe for a minute, you'll paste it in step 8.
+
+## 6. Get your own Anthropic API key
+
+This is what reads each Instagram caption and figures out the bike
+brand/model/price.
+
+1. Go to [console.anthropic.com](https://console.anthropic.com) and sign
+   up.
+2. Go to **API Keys**, create a new key, and copy it.
+
+## 7. Get the shared credentials file from Joe
+
+Joe will send you a file (something like `service-account.json`) through
+a secure way (AirDrop, Signal, etc. -- **not** email or text) -- this is a
+password-like credential for writing to the shared Google Sheet, so treat
+it like one. Save it somewhere you'll remember, e.g. your Documents
+folder, and note the full path (e.g.
+`/Users/yourname/Documents/service-account.json`).
+
+## 8. Fill in your settings
+
+Paste these to create your own local copies of two settings files:
+
+```bash
+cp .env.example .env
+cp config.example.yaml config.yaml
+```
+
+Now open `.env` in a text editor -- easiest way from Terminal:
+
+```bash
+open -e .env
+```
+
+Fill in:
+- `APIFY_API_TOKEN` -- from step 5
+- `ANTHROPIC_API_KEY` -- from step 6
+- `GOOGLE_SERVICE_ACCOUNT_JSON` -- the full path to the file from step 7
+- `GOOGLE_SHEET_ID` -- ask Joe for this (the long id in the shared
+  spreadsheet's URL, between `/d/` and `/edit`)
+
+Save and close the file (`Cmd + S`, then close the window).
+
+Now open `config.yaml` the same way:
+
+```bash
+open -e config.yaml
+```
+
+Ask Joe for the exact values he's using for `instagram.profile` and
+`san_diego.zip` / `radius_miles`, and set yours to match (so you're
+searching the same account/area). Leave `facebook.enabled` as `false` for
+now -- that one needs an extra one-time step you can do later if you want
+it.
+
+## 9. Run it
+
+Back in Terminal (make sure you did `source .venv/bin/activate` from step
+4 if you closed/reopened Terminal since then):
+
+```bash
+python main.py --only ig
+```
+
+This checks Instagram for new posts and logs them to the shared sheet.
+It should finish in well under a minute most days.
+
+```bash
+python main.py --only sd
+```
+
+This searches Craigslist/OfferUp in San Diego for every bike frame ever
+logged. **This one is slow** -- it can take 30-60+ minutes since it checks
+every known frame one at a time. That's normal, just let it run; you'll
+see it printing progress as it goes.
+
+You can check the [shared Google
+Sheet](https://docs.google.com/spreadsheets/d/1_F4eCWdlerA0RN4FlhEsAHNzBDsmZ-Q5pmfwnBEmbtY/edit)
+afterward to see anything new that showed up.
+
+## If something goes wrong
+
+Copy the exact error message you see and send it over -- almost
+everything here is fixable, it's just easier with the exact wording of
+whatever it printed.

@@ -19,6 +19,10 @@ Google Sheet with three tabs:
 
 Safe to rerun repeatedly or put on a schedule -- already-processed
 Instagram posts and already-logged San Diego listings are always skipped.
+Dedup is derived from the Sheet's own contents (not a local file), so this
+also works correctly if more than one person runs it against the same
+shared Sheet from their own machine -- see `SETUP.md` for a plain-English,
+no-coding-experience walkthrough if you're setting this up fresh.
 
 ## How it works
 

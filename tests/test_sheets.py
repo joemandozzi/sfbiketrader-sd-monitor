@@ -1,6 +1,6 @@
 import unittest
 
-from sfmonitor.sheets import compute_frame_counts
+from sfmonitor.sheets import compute_frame_counts, frame_keys
 
 
 def _row(brand, model, price=""):
@@ -45,6 +45,23 @@ class TestComputeFrameCounts(unittest.TestCase):
         rows = [_row("Trek", "520", "$300"), _row("Trek", "520", "")]
         result = compute_frame_counts(rows)
         self.assertEqual(result, [["Trek", "520", 2, 300, 300]])
+
+
+class TestFrameKeys(unittest.TestCase):
+    def test_returns_distinct_pairs(self):
+        rows = [
+            _row("Specialized", "Stumpjumper"),
+            _row("Specialized", "Stumpjumper"),
+            _row("Trek", "520"),
+        ]
+        self.assertEqual(frame_keys(rows), {("Specialized", "Stumpjumper"), ("Trek", "520")})
+
+    def test_skips_rows_missing_brand_or_model(self):
+        rows = [_row("Trek", "520"), _row("Trek", None), _row(None, "520"), _row("", "")]
+        self.assertEqual(frame_keys(rows), {("Trek", "520")})
+
+    def test_empty_rows_returns_empty_set(self):
+        self.assertEqual(frame_keys([]), set())
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
-from sfmonitor import apify_client, extract, ig_state, known_frames, matcher, sd_state, sheets
+from sfmonitor import apify_client, extract, matcher, sheets
 from sfmonitor.craigslist import search_craigslist
 
 ROOT = Path(__file__).resolve().parent
@@ -36,7 +36,18 @@ def load_config():
 
 def collect_ig_frames(config, sheet: sheets.SheetHandles):
     """Fetch new IG posts, extract frame mentions, log them, and return the
-    full set of distinct (brand, model) pairs seen across all runs."""
+    full set of distinct (brand, model) pairs seen across all runs.
+
+    "Already processed" is derived from the frames tab itself (not a local
+    file), since this Sheet can be shared across multiple machines -- the
+    Sheet's current contents are the only source of truth both machines
+    agree on. One accepted tradeoff: a caption with zero extractable
+    frames never gets a row here, so it has no URL to dedupe against and
+    will be re-fetched/re-sent through extraction every run it's still
+    within `fetch_limit`'s recent window. Bounded, cheap cost -- not worth
+    a second shared "processed post IDs" tracking mechanism just to skip
+    a minority case.
+    """
     profile_url = f"https://www.instagram.com/{config['instagram']['profile']}/"
     limit = config["instagram"].get("fetch_limit", 25)
 
@@ -44,31 +55,21 @@ def collect_ig_frames(config, sheet: sheets.SheetHandles):
     posts = apify_client.fetch_posts(profile_url, limit)
     print(f"Fetched {len(posts)} post(s).")
 
-    seen = ig_state.load_seen()
-    new_posts = [p for p in posts if p.post_id not in seen]
+    seen_urls = {row[1] for row in sheet.get_frame_rows() if row[1]}
+    new_posts = [p for p in posts if p.url not in seen_urls]
     print(f"{len(new_posts)} new post(s) to process ({len(posts) - len(new_posts)} already seen).")
 
     new_frames = set()
     for post in new_posts:
         frames = extract.extract_frame_info(post.caption)
-        post_frames = set()
         for frame in frames:
             sheet.append_frame_row(
                 post.timestamp, post.url, frame.brand, frame.model, frame.frame_size, frame.price, frame.condition
             )
             if frame.brand and frame.model:
-                post_frames.add((frame.brand, frame.model))
-        # Mark seen and persist newly-found frames right after this post is
-        # fully processed (not batched at the end) so a crash partway
-        # through a large run doesn't lose progress -- a resumed run should
-        # never re-log a post it already wrote to the sheet, or forget a
-        # frame it already discovered.
-        ig_state.mark_seen([post.post_id])
-        if post_frames:
-            known_frames.add_known_frames(post_frames)
-            new_frames |= post_frames
+                new_frames.add((frame.brand, frame.model))
 
-    all_frames = known_frames.load_known_frames()
+    all_frames = sheets.frame_keys(sheet.get_frame_rows())
     print(f"{len(new_frames)} new distinct frame(s) this run, {len(all_frames)} known in total.")
     return all_frames
 
@@ -78,6 +79,14 @@ def search_san_diego(frames, config, sheet: sheets.SheetHandles):
     radius = config["san_diego"]["radius_miles"]
     facebook_enabled = config.get("facebook", {}).get("enabled", False)
     offerup_enabled = config.get("offerup", {}).get("enabled", False)
+
+    # Read once up front rather than per-frame -- same shared-source-of-truth
+    # reasoning as collect_ig_frames: this Sheet can be written to by more
+    # than one machine, so "already seen" always comes from its current
+    # contents, not a local file. Updated in-memory as we go so two
+    # different frame keywords matching the same listing in one run don't
+    # double-log it.
+    seen_urls = sheet.get_match_urls()
 
     with ExitStack() as stack:
         fb_session = None
@@ -125,14 +134,14 @@ def search_san_diego(frames, config, sheet: sheets.SheetHandles):
                     print(f"  [warn] offerup search failed for {keyword!r}: {exc}", file=sys.stderr)
 
             candidates = [c for c in candidates if matcher.title_matches_keyword(c["title"], keyword)]
-            unseen = sd_state.filter_unseen(candidates)
+            unseen = [c for c in candidates if c["url"] not in seen_urls]
             print(f"  {keyword!r}: {len(candidates)} candidate(s), {len(unseen)} new")
 
             for item in unseen:
                 sheet.append_match_row(
                     brand, model, item["source"], item["title"], item.get("price"), item.get("location"), item["url"]
                 )
-            sd_state.mark_seen(unseen)
+                seen_urls.add(item["url"])
             total_new += len(unseen)
             time.sleep(SD_SEARCH_DELAY_SECONDS)
 
@@ -176,7 +185,7 @@ def main(argv=None) -> int:
             return 1
         sheet.write_frame_counts()
     else:
-        all_frames = known_frames.load_known_frames()
+        all_frames = sheets.frame_keys(sheet.get_frame_rows())
 
     if run_sd:
         if all_frames:

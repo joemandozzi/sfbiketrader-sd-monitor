@@ -41,12 +41,16 @@ INSTRUCTIONS_TAB = "Instructions"
 INSTRUCTIONS_ROWS = [
     ["How this sheet updates"],
     [""],
-    ["Joe updates this sheet from his computer -- there's nothing to click"],
-    ["here, and nothing anyone else needs to do."],
+    ["This updates from whoever's computer has it set up (currently Joe's"],
+    ["and his brother-in-law's) -- there's no button in the Sheet itself."],
     [""],
-    ["(Joe's notes: run these two commands to refresh each tab.)"],
+    ["First-time setup: see SETUP.md in the GitHub repo --"],
+    ["https://github.com/joemandozzi/sfbiketrader-sd-monitor"],
+    [""],
+    ["Once set up, run these two commands in Terminal to refresh each tab:"],
     ["cd ~/sfbiketrader-sd-monitor && source .venv/bin/activate && python main.py --only ig"],
     ["cd ~/sfbiketrader-sd-monitor && source .venv/bin/activate && python main.py --only sd"],
+    ["(The second one takes 30-60+ minutes -- that's normal.)"],
 ]
 
 
@@ -115,6 +119,17 @@ def _parse_price(raw: str) -> Optional[int]:
     return int(m.group(0).replace(",", ""))
 
 
+def frame_keys(frame_rows: list) -> set:
+    """Distinct (brand, model) pairs across all logged frame mentions.
+
+    This -- not a local cache file -- is the source of truth for "which
+    frames are known so far," since it's derived fresh from the shared
+    spreadsheet and so stays correct no matter which machine last wrote to
+    it.
+    """
+    return {(row[2], row[3]) for row in frame_rows if row[2] and row[3]}
+
+
 def compute_frame_counts(frame_rows: list) -> list:
     """Given data rows from the frames tab (brand at index 2, model at
     index 3, price at index 5), return [brand, model, count, min_price,
@@ -170,6 +185,22 @@ class SheetHandles:
     @property
     def url(self) -> str:
         return self.spreadsheet.url
+
+    def get_frame_rows(self) -> list:
+        """Raw data rows (no header) from the frames tab -- the shared
+        source of truth for which posts/frames have already been logged.
+        Multiple machines can write to the same spreadsheet, so dedup is
+        always derived from its current contents rather than any local
+        per-machine file.
+        """
+        return self.frames_ws.get_all_values()[1:]
+
+    def get_match_urls(self) -> set:
+        """URLs already logged in the San Diego Matches tab (last column),
+        same shared-source-of-truth reasoning as get_frame_rows().
+        """
+        rows = self.matches_ws.get_all_values()[1:]
+        return {row[-1] for row in rows if row[-1]}
 
     def append_frame_row(self, post_timestamp, post_url, brand, model, frame_size, price, condition) -> None:
         _append_with_retry(self.frames_ws, [post_timestamp, post_url, brand, model, frame_size, price, condition])
