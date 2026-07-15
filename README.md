@@ -10,8 +10,9 @@ Google Sheet with three tabs:
 - **San Diego Matches** -- new San Diego listings found for those same
   frames (source, title, price, location, link).
 - **Frame Counts** -- distinct (brand, model) pairs the account has ever
-  posted, ranked by how many times each has appeared. Fully recomputed
-  every run (a derived summary, not an append log).
+  posted, ranked by how many times each has appeared, plus the min/max
+  asking price seen for that frame. Fully recomputed every run (a derived
+  summary, not an append log).
 
 Safe to rerun repeatedly or put on a schedule -- already-processed
 Instagram posts and already-logged San Diego listings are always skipped.
