@@ -1,14 +1,17 @@
 # sfbiketrader-sd-monitor
 
 Tracks every bike frame the Instagram account `@sfbiketrader` posts for
-sale, then cross-references those frames against Craigslist (and,
-optionally, Facebook Marketplace) listings in San Diego. Everything lands
-in a Google Sheet with two tabs:
+sale, then cross-references those frames against Craigslist, Facebook
+Marketplace, and OfferUp listings in San Diego. Everything lands in a
+Google Sheet with three tabs:
 
 - **SF Bike Trader Frames** -- every frame mention extracted from IG
   captions (brand, model, size, price, condition, post link).
 - **San Diego Matches** -- new San Diego listings found for those same
   frames (source, title, price, location, link).
+- **Frame Counts** -- distinct (brand, model) pairs the account has ever
+  posted, ranked by how many times each has appeared. Fully recomputed
+  every run (a derived summary, not an append log).
 
 Safe to rerun repeatedly or put on a schedule -- already-processed
 Instagram posts and already-logged San Diego listings are always skipped.
@@ -22,10 +25,12 @@ Instagram posts and already-logged San Diego listings are always skipped.
 2. Extracts structured frame details from each new caption via the
    Anthropic API (captions are free text, so a fixed keyword list would
    miss too much).
-3. Logs new frame mentions to the "SF Bike Trader Frames" tab.
-4. Searches Craigslist (and Facebook Marketplace, if enabled) in San Diego
-   for every distinct brand/model pair ever seen -- not just new ones, since
-   a fresh San Diego listing can appear for a frame first seen weeks ago.
+3. Logs new frame mentions to the "SF Bike Trader Frames" tab, then
+   recomputes the "Frame Counts" leaderboard tab.
+4. Searches Craigslist (and Facebook Marketplace / OfferUp, if enabled) in
+   San Diego for every distinct brand/model pair ever seen -- not just new
+   ones, since a fresh San Diego listing can appear for a frame first seen
+   weeks ago.
 5. Logs genuinely new matches to the "San Diego Matches" tab.
 
 ## Setup
@@ -92,6 +97,24 @@ committed, never sent anywhere). Anyone with access to this machine's
 filesystem could use it to act as that account without a password or 2FA.
 Consider a secondary account rather than your primary one if that's a
 concern. Re-run `facebook_login.py` any time the session expires.
+
+Without a session file, Facebook search still runs, but in logged-out mode
+-- location then comes from IP-based geolocation, which can resolve
+incorrectly.
+
+### OfferUp (optional)
+
+Off by default (`offerup.enabled: false` in `config.yaml`). No login
+needed, just Playwright + Chromium:
+
+```bash
+pip install -r requirements-offerup.txt
+playwright install chromium
+```
+
+(If Facebook Marketplace is also enabled, one `playwright install
+chromium` covers both -- they share the same browser.) Capped at OfferUp's
+own 50-mile max search radius regardless of `san_diego.radius_miles`.
 
 ## Usage
 

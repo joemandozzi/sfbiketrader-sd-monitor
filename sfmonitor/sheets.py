@@ -29,6 +29,9 @@ FRAMES_HEADER = ["post_timestamp", "post_url", "brand", "model", "frame_size", "
 MATCHES_TAB = "San Diego Matches"
 MATCHES_HEADER = ["matched_brand", "matched_model", "source", "title", "price", "location", "url"]
 
+FRAME_COUNTS_TAB = "Frame Counts"
+FRAME_COUNTS_HEADER = ["brand", "model", "count"]
+
 
 class SheetsConfigError(RuntimeError):
     """Raised when the service-account credentials or sheet aren't configured."""
@@ -64,19 +67,35 @@ def _get_or_create_worksheet(spreadsheet, title: str, header: list):
     return ws
 
 
-def _append_with_retry(worksheet, row: list) -> None:
-    """A run appending hundreds of rows will eventually hit a transient
-    network blip or a Sheets API rate-limit response -- retry with backoff
+def _with_retry(fn, *args, **kwargs):
+    """A run making hundreds of Sheets API calls will eventually hit a
+    transient network blip or a rate-limit response -- retry with backoff
     rather than letting one flaky request kill an hours-long backfill.
     """
     for attempt in range(1, RETRY_ATTEMPTS + 1):
         try:
-            worksheet.append_row(row)
-            return
+            return fn(*args, **kwargs)
         except (requests.exceptions.ConnectionError, gspread.exceptions.APIError):
             if attempt == RETRY_ATTEMPTS:
                 raise
             time.sleep(RETRY_BASE_DELAY_SECONDS * attempt)
+
+
+def _append_with_retry(worksheet, row: list) -> None:
+    _with_retry(worksheet.append_row, row)
+
+
+def compute_frame_counts(frame_rows: list) -> list:
+    """Given data rows from the frames tab (brand at index 2, model at
+    index 3), return [brand, model, count] rows ordered by count desc.
+    """
+    counts: dict = {}
+    for row in frame_rows:
+        brand, model = row[2], row[3]
+        if brand and model:
+            counts[(brand, model)] = counts.get((brand, model), 0) + 1
+    ranked = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)
+    return [[brand, model, count] for (brand, model), count in ranked]
 
 
 class SheetHandles:
@@ -90,6 +109,7 @@ class SheetHandles:
         self.spreadsheet = _open_spreadsheet(client)
         self.frames_ws = _get_or_create_worksheet(self.spreadsheet, FRAMES_TAB, FRAMES_HEADER)
         self.matches_ws = _get_or_create_worksheet(self.spreadsheet, MATCHES_TAB, MATCHES_HEADER)
+        self.frame_counts_ws = _get_or_create_worksheet(self.spreadsheet, FRAME_COUNTS_TAB, FRAME_COUNTS_HEADER)
 
     @property
     def url(self) -> str:
@@ -100,3 +120,14 @@ class SheetHandles:
 
     def append_match_row(self, matched_brand, matched_model, source, title, price, location, url) -> None:
         _append_with_retry(self.matches_ws, [matched_brand, matched_model, source, title, price, location, url])
+
+    def write_frame_counts(self) -> None:
+        """Recompute the distinct-frame leaderboard from scratch, ordered by
+        how many times each (brand, model) appears in the frames log. This
+        tab is a derived summary, not an append-only log -- it's fully
+        overwritten every run rather than incrementally appended to.
+        """
+        rows = self.frames_ws.get_all_values()[1:]  # skip header
+        values = [FRAME_COUNTS_HEADER] + compute_frame_counts(rows)
+        _with_retry(self.frame_counts_ws.clear)
+        _with_retry(self.frame_counts_ws.update, values)

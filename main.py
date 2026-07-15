@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Entry point: pull new frame-for-sale posts from an Instagram marketplace
-account, log them to a Google Sheet, then search San Diego Craigslist (and
-Facebook Marketplace, if a login session exists) for every distinct frame
-ever seen, logging new matches to a second tab.
+account, log them to a Google Sheet, then search San Diego Craigslist,
+Facebook Marketplace, and OfferUp (the latter two if enabled in
+config.yaml) for every distinct frame ever seen, logging new matches to a
+second tab.
 
 Run manually with `python3 main.py`, or schedule it (see README.md).
 """
@@ -73,16 +74,27 @@ def search_san_diego(frames, config, sheet: sheets.SheetHandles):
     zip_code = config["san_diego"]["zip"]
     radius = config["san_diego"]["radius_miles"]
     facebook_enabled = config.get("facebook", {}).get("enabled", False)
+    offerup_enabled = config.get("offerup", {}).get("enabled", False)
 
     with ExitStack() as stack:
         fb_session = None
-        if facebook_enabled:
+        offerup_session = None
+        if facebook_enabled or offerup_enabled:
+            # Playwright's sync API only supports one active driver per
+            # thread, so Facebook and OfferUp (both Playwright-based) share
+            # a single instance rather than each starting their own.
             from playwright.sync_api import sync_playwright
 
-            from sfmonitor.facebook import FacebookSession
-
             playwright = stack.enter_context(sync_playwright())
-            fb_session = stack.enter_context(FacebookSession(playwright))
+
+            if facebook_enabled:
+                from sfmonitor.facebook import FacebookSession
+
+                fb_session = stack.enter_context(FacebookSession(playwright))
+            if offerup_enabled:
+                from sfmonitor.offerup import OfferUpSession
+
+                offerup_session = stack.enter_context(OfferUpSession(playwright, zip_code))
 
         total_new = 0
         for brand, model in sorted(frames):
@@ -99,6 +111,12 @@ def search_san_diego(frames, config, sheet: sheets.SheetHandles):
                     candidates += fb_session.search(keyword, radius)
                 except Exception as exc:
                     print(f"  [warn] facebook search failed for {keyword!r}: {exc}", file=sys.stderr)
+
+            if offerup_session is not None:
+                try:
+                    candidates += offerup_session.search(keyword, radius)
+                except Exception as exc:
+                    print(f"  [warn] offerup search failed for {keyword!r}: {exc}", file=sys.stderr)
 
             candidates = [c for c in candidates if matcher.title_matches_keyword(c["title"], keyword)]
             unseen = sd_state.filter_unseen(candidates)
@@ -132,6 +150,8 @@ def main() -> int:
     except (apify_client.ApifyConfigError, extract.ExtractConfigError) as exc:
         print(f"Error: {exc}")
         return 1
+
+    sheet.write_frame_counts()
 
     if all_frames:
         print(f"Searching San Diego for {len(all_frames)} known frame(s)...")

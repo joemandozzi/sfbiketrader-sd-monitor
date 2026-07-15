@@ -14,3 +14,9 @@ san_diego:
 # login (see README.md: `python3 facebook_login.py`).
 facebook:
   enabled: false
+
+# Also search OfferUp. Off by default -- requires Playwright + Chromium
+# (see README.md), no login needed. Capped at OfferUp's own 50mi max
+# radius regardless of san_diego.radius_miles above.
+offerup:
+  enabled: false
