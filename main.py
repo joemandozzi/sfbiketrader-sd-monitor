@@ -47,17 +47,23 @@ def collect_ig_frames(config, sheet: sheets.SheetHandles):
     new_frames = set()
     for post in new_posts:
         frames = extract.extract_frame_info(post.caption)
+        post_frames = set()
         for frame in frames:
             sheet.append_frame_row(
                 post.timestamp, post.url, frame.brand, frame.model, frame.frame_size, frame.price, frame.condition
             )
             if frame.brand and frame.model:
-                new_frames.add((frame.brand, frame.model))
+                post_frames.add((frame.brand, frame.model))
+        # Mark seen and persist newly-found frames right after this post is
+        # fully processed (not batched at the end) so a crash partway
+        # through a large run doesn't lose progress -- a resumed run should
+        # never re-log a post it already wrote to the sheet, or forget a
+        # frame it already discovered.
+        ig_state.mark_seen([post.post_id])
+        if post_frames:
+            known_frames.add_known_frames(post_frames)
+            new_frames |= post_frames
 
-    if new_posts:
-        ig_state.mark_seen([p.post_id for p in new_posts])
-
-    known_frames.add_known_frames(new_frames)
     all_frames = known_frames.load_known_frames()
     print(f"{len(new_frames)} new distinct frame(s) this run, {len(all_frames)} known in total.")
     return all_frames

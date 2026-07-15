@@ -6,9 +6,14 @@ create a service account, enable the Sheets + Drive APIs, and share your
 sheet with the service account's email.
 """
 import os
+import time
 
 import gspread
+import requests
 from google.oauth2.service_account import Credentials
+
+RETRY_ATTEMPTS = 5
+RETRY_BASE_DELAY_SECONDS = 2
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -59,6 +64,21 @@ def _get_or_create_worksheet(spreadsheet, title: str, header: list):
     return ws
 
 
+def _append_with_retry(worksheet, row: list) -> None:
+    """A run appending hundreds of rows will eventually hit a transient
+    network blip or a Sheets API rate-limit response -- retry with backoff
+    rather than letting one flaky request kill an hours-long backfill.
+    """
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            worksheet.append_row(row)
+            return
+        except (requests.exceptions.ConnectionError, gspread.exceptions.APIError):
+            if attempt == RETRY_ATTEMPTS:
+                raise
+            time.sleep(RETRY_BASE_DELAY_SECONDS * attempt)
+
+
 class SheetHandles:
     """Holds one open spreadsheet + both worksheets for the duration of a
     run, so a run with many rows to append doesn't re-open the spreadsheet
@@ -76,7 +96,7 @@ class SheetHandles:
         return self.spreadsheet.url
 
     def append_frame_row(self, post_timestamp, post_url, brand, model, frame_size, price, condition) -> None:
-        self.frames_ws.append_row([post_timestamp, post_url, brand, model, frame_size, price, condition])
+        _append_with_retry(self.frames_ws, [post_timestamp, post_url, brand, model, frame_size, price, condition])
 
     def append_match_row(self, matched_brand, matched_model, source, title, price, location, url) -> None:
-        self.matches_ws.append_row([matched_brand, matched_model, source, title, price, location, url])
+        _append_with_retry(self.matches_ws, [matched_brand, matched_model, source, title, price, location, url])
