@@ -6,11 +6,15 @@ create a service account, enable the Sheets + Drive APIs, and share your
 sheet with the service account's email.
 """
 import os
+import re
 import time
+from typing import Optional
 
 import gspread
 import requests
 from google.oauth2.service_account import Credentials
+
+_PRICE_RE = re.compile(r"[\d,]+")
 
 RETRY_ATTEMPTS = 5
 RETRY_BASE_DELAY_SECONDS = 2
@@ -30,7 +34,7 @@ MATCHES_TAB = "San Diego Matches"
 MATCHES_HEADER = ["matched_brand", "matched_model", "source", "title", "price", "location", "url"]
 
 FRAME_COUNTS_TAB = "Frame Counts"
-FRAME_COUNTS_HEADER = ["brand", "model", "count"]
+FRAME_COUNTS_HEADER = ["brand", "model", "count", "min_price", "max_price"]
 
 
 class SheetsConfigError(RuntimeError):
@@ -85,17 +89,45 @@ def _append_with_retry(worksheet, row: list) -> None:
     _with_retry(worksheet.append_row, row)
 
 
+def _parse_price(raw: str) -> Optional[int]:
+    """Frame-tab prices are Claude's free-text extraction (e.g. "$450",
+    "450", "$1,200") -- pull out the first number, ignore anything
+    unparseable rather than erroring.
+    """
+    if not raw:
+        return None
+    m = _PRICE_RE.search(raw)
+    if not m:
+        return None
+    return int(m.group(0).replace(",", ""))
+
+
 def compute_frame_counts(frame_rows: list) -> list:
     """Given data rows from the frames tab (brand at index 2, model at
-    index 3), return [brand, model, count] rows ordered by count desc.
+    index 3, price at index 5), return [brand, model, count, min_price,
+    max_price] rows ordered by count desc. min/max are blank when no
+    listing for that frame had a parseable price.
     """
     counts: dict = {}
+    prices: dict = {}
     for row in frame_rows:
-        brand, model = row[2], row[3]
-        if brand and model:
-            counts[(brand, model)] = counts.get((brand, model), 0) + 1
+        brand, model, price_raw = row[2], row[3], row[5]
+        if not (brand and model):
+            continue
+        key = (brand, model)
+        counts[key] = counts.get(key, 0) + 1
+        price = _parse_price(price_raw)
+        if price is not None:
+            prices.setdefault(key, []).append(price)
+
     ranked = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)
-    return [[brand, model, count] for (brand, model), count in ranked]
+    rows = []
+    for key, count in ranked:
+        key_prices = prices.get(key)
+        min_price = min(key_prices) if key_prices else ""
+        max_price = max(key_prices) if key_prices else ""
+        rows.append([key[0], key[1], count, min_price, max_price])
+    return rows
 
 
 class SheetHandles:
