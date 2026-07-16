@@ -57,17 +57,35 @@ Please:
      brand/model/price.
    Wait for me to paste both back to you.
 
-4. Ask me where I saved the Google service-account credentials file
-   (something like `service-account.json`) that whoever manages the
-   shared spreadsheet sent me -- I'll give you the full path. This is a
-   password-like credential for writing to that shared Sheet, so keep it
-   out of any commit if you ever touch git status/add, and don't print
-   its contents.
+4. Walk me through creating my own Google service account for writing to
+   the shared Sheet (don't have me use someone else's credential file --
+   a service account I create myself only ever has access to the one
+   sheet I explicitly get added to, not anything else the sheet owner
+   manages). You can't click through Google Cloud Console for me, so
+   narrate each step and wait for me to confirm before moving on:
+   a. Go to console.cloud.google.com and create a new project (or pick
+      an existing one).
+   b. Enable the "Google Sheets API" and "Google Drive API" for it
+      (search each by name, click Enable).
+   c. Go to IAM & Admin -> Service Accounts -> Create Service Account,
+      give it any name, click through without adding any roles.
+   d. Open the new service account -> Keys tab -> Add Key -> Create New
+      Key -> JSON -> Create. This downloads a JSON file (usually to
+      Downloads) -- help me move it somewhere sensible and note the
+      full path.
+   e. Show me the service account's email (looks like
+      something@project-id.iam.gserviceaccount.com -- visible on its
+      details page, or as "client_email" inside the downloaded JSON).
+      I need to send that email address (not the file -- the file
+      never leaves my machine) to whoever manages the shared
+      spreadsheet, so they can add it as an Editor via Google Sheets'
+      Share dialog. Tell me to do that and wait for their confirmation
+      before continuing.
 
 5. Create `.env` (copy from `.env.example`) and fill in:
    - APIFY_API_TOKEN = the token from step 3
    - ANTHROPIC_API_KEY = the key from step 3
-   - GOOGLE_SERVICE_ACCOUNT_JSON = the path from step 4
+   - GOOGLE_SERVICE_ACCOUNT_JSON = the path to the key file from step 4
    - GOOGLE_SHEET_ID = 1_F4eCWdlerA0RN4FlhEsAHNzBDsmZ-Q5pmfwnBEmbtY
 
 6. Create `config.yaml` (copy from `config.example.yaml`) and set:
@@ -78,9 +96,12 @@ Please:
    - facebook.enabled = false (can be set up later -- it needs its own
      one-time login step, see facebook_login.py)
 
-7. Run `python main.py --only ig` as a test, show me the output, and
-   confirm it worked (it should print something like "Fetched N post(s)"
-   with no error at the end).
+7. Once the sheet owner confirms they've added my service account as an
+   Editor, run `python main.py --only ig` as a test, show me the output,
+   and confirm it worked (it should print something like "Fetched N
+   post(s)" with no error at the end -- a permissions error here usually
+   means the sheet owner hasn't finished sharing it with my service
+   account's email yet).
 
 8. Tell me about REFRESH.md in the repo -- that's what I'll use day to
    day after this initial setup.

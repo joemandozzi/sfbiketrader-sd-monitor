@@ -94,14 +94,34 @@ brand/model/price.
    up.
 2. Go to **API Keys**, create a new key, and copy it.
 
-## 7. Get the shared credentials file
+## 7. Create your own Google service account
 
-Whoever manages the shared spreadsheet will send you a file (something
-like `service-account.json`) through a secure channel (AirDrop, Signal,
-etc. -- **not** email or text) -- this is a password-like credential for
-writing to the shared Google Sheet, so treat it like one. Save it
-somewhere you'll remember, e.g. your Documents folder, and note the full
-path (e.g. `/Users/yourname/Documents/service-account.json`).
+This is what actually writes to the shared Google Sheet. You're creating
+your **own** one here rather than receiving someone else's credential
+file -- that way your access is scoped to only this one sheet, not
+anything else the sheet owner manages.
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) and
+   sign in. Create a new project (top-left project dropdown -> "New
+   Project"), name it anything (e.g. "sfbiketrader"), click Create.
+2. Once it's created and selected, use the search bar at the top to find
+   **Google Sheets API**, open it, click **Enable**. Do the same for
+   **Google Drive API**.
+3. Go to **IAM & Admin -> Service Accounts** (search bar works here too),
+   click **Create Service Account**, give it any name (e.g.
+   "sfbiketrader-sheets"), click **Create and Continue**, then **Done**
+   (no roles needed).
+4. Click into the service account you just created, go to the **Keys**
+   tab, click **Add Key -> Create New Key**, choose **JSON**, click
+   **Create**. A file downloads (usually to your Downloads folder).
+   Move it somewhere you'll remember (e.g. Documents) and note the full
+   path.
+5. On that same service account's page, copy its **email address** --
+   it looks like `something@your-project-id.iam.gserviceaccount.com`.
+   **Send this email address (not the JSON file) to whoever manages the
+   shared spreadsheet** -- they need to open the Sheet, click **Share**,
+   and add that email as an **Editor**. Wait for them to confirm they've
+   done this before moving on to step 9.
 
 ## 8. Fill in your settings
 
@@ -155,6 +175,10 @@ Leave `facebook.enabled` as `false` for now -- that one needs an extra
 one-time login step you can do later if you want it.
 
 ## 9. Run it
+
+Make sure the sheet owner has confirmed they've added your service
+account's email as an Editor (step 7.5) before running this -- otherwise
+you'll get a permissions error.
 
 Back in Terminal (make sure you did `source .venv/bin/activate` from step
 4 if you closed/reopened Terminal since then):
