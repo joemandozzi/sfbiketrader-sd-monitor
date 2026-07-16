@@ -112,9 +112,17 @@ filesystem could use it to act as that account without a password or 2FA.
 Consider a secondary account rather than your primary one if that's a
 concern. Re-run `facebook_login.py` any time the session expires.
 
-Without a session file, Facebook search still runs, but in logged-out mode
--- location then comes from IP-based geolocation, which can resolve
-incorrectly.
+To reduce that risk, `facebook_login.py` locks both down to owner-only
+access on macOS/Linux: `data/` is created (or reset) at `0700` and
+`fb_session.json` is written at `0600`, so other local accounts on the
+same machine can't read it.
+
+Without a session file, Facebook search doesn't run at all -- it's
+skipped for that run with a warning, rather than falling back to
+logged-out/IP-based location. (An earlier version of this tool did fall
+back that way; it got dropped after a real run silently logged listings
+from the wrong city, since logged-out location resolution turned out to
+be unreliable.)
 
 ### OfferUp (optional)
 

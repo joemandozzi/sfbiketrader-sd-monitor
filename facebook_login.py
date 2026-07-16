@@ -19,6 +19,7 @@ again any time the session expires (Facebook logs you out).
 
 Ported from joemandozzi/bike-scraper's facebook_login.py.
 """
+import os
 import time
 from pathlib import Path
 
@@ -33,8 +34,24 @@ def _is_logged_in(context):
     return any(c["name"] == "c_user" for c in context.cookies("https://www.facebook.com"))
 
 
+def _ensure_private_dir(path: Path) -> None:
+    """Create `path` (if needed) and restrict it to owner-only access.
+    chmod is a no-op-ish on Windows (no real POSIX mode bits there), but
+    safe to call -- this only meaningfully locks things down on macOS/Linux.
+    """
+    path.mkdir(parents=True, exist_ok=True)
+    os.chmod(path, 0o700)
+
+
+def _lock_down_session_file(path: Path) -> None:
+    """Restrict the saved session file to owner read/write only -- it's
+    effectively a Facebook login credential in plaintext.
+    """
+    os.chmod(path, 0o600)
+
+
 def main():
-    SESSION_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _ensure_private_dir(SESSION_PATH.parent)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
@@ -53,6 +70,7 @@ def main():
             if _is_logged_in(context):
                 print("Logged in -- saving session.")
                 context.storage_state(path=str(SESSION_PATH))
+                _lock_down_session_file(SESSION_PATH)
                 browser.close()
                 print(f"Saved session to {SESSION_PATH}")
                 return
