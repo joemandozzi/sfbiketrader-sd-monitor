@@ -224,6 +224,11 @@ def _parse_price(raw: str) -> Optional[int]:
     return int(m.group(0).replace(",", ""))
 
 
+def sort_match_rows(match_rows: list) -> list:
+    """Sort matches-tab data rows by date_added (index 0), newest first."""
+    return sorted(match_rows, key=lambda row: row[0], reverse=True)
+
+
 def frame_keys(frame_rows: list) -> set:
     """Distinct (brand, model) pairs across all logged frame mentions.
 
@@ -321,6 +326,17 @@ class SheetHandles:
         _append_with_retry(
             self.matches_ws, [date_added, matched_brand, matched_model, source, title, price, location, url]
         )
+
+    def sort_matches_by_date_added(self) -> None:
+        """Re-sort the whole matches tab newest-first. New matches are
+        appended to the bottom during a run (cheap, one row at a time), so
+        this re-sort happens once at the end rather than re-sorting after
+        every single append.
+        """
+        rows = self.matches_ws.get_all_values()[1:]
+        sorted_rows = sort_match_rows(rows)
+        _with_retry(self.matches_ws.clear)
+        _with_retry(self.matches_ws.update, [MATCHES_HEADER] + sorted_rows)
 
     def write_frame_counts(self) -> None:
         """Recompute the distinct-frame leaderboard from scratch, ordered by

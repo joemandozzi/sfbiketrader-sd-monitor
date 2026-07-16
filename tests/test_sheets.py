@@ -1,12 +1,18 @@
 import unittest
 
-from sfmonitor.sheets import compute_frame_counts, frame_keys
+from sfmonitor.sheets import compute_frame_counts, frame_keys, sort_match_rows
 
 
 def _row(brand, model, price=""):
     # Matches FRAMES_HEADER column order: post_timestamp, post_url, brand,
     # model, frame_size, price, condition.
     return ["2026-01-01", "https://example.com/p/1", brand, model, "", price, ""]
+
+
+def _match_row(date_added, url="https://example.com/x"):
+    # Matches MATCHES_HEADER column order: date_added, matched_brand,
+    # matched_model, source, title, price, location, url.
+    return [date_added, "Trek", "520", "craigslist", "Trek 520", "$300", "San Diego", url]
 
 
 class TestComputeFrameCounts(unittest.TestCase):
@@ -62,6 +68,26 @@ class TestFrameKeys(unittest.TestCase):
 
     def test_empty_rows_returns_empty_set(self):
         self.assertEqual(frame_keys([]), set())
+
+
+class TestSortMatchRows(unittest.TestCase):
+    def test_sorts_newest_first(self):
+        rows = [
+            _match_row("2026-07-10T00:00:00+00:00", url="oldest"),
+            _match_row("2026-07-15T00:00:00+00:00", url="newest"),
+            _match_row("2026-07-12T00:00:00+00:00", url="middle"),
+        ]
+        result = sort_match_rows(rows)
+        self.assertEqual([row[-1] for row in result], ["newest", "middle", "oldest"])
+
+    def test_empty_rows_returns_empty(self):
+        self.assertEqual(sort_match_rows([]), [])
+
+    def test_does_not_mutate_input(self):
+        rows = [_match_row("2026-07-10T00:00:00+00:00"), _match_row("2026-07-15T00:00:00+00:00")]
+        original = list(rows)
+        sort_match_rows(rows)
+        self.assertEqual(rows, original)
 
 
 if __name__ == "__main__":

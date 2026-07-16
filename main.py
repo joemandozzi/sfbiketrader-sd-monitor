@@ -145,6 +145,9 @@ def search_san_diego(frames, config, sheet: sheets.SheetHandles):
             total_new += len(unseen)
             time.sleep(SD_SEARCH_DELAY_SECONDS)
 
+    if total_new:
+        sheet.sort_matches_by_date_added()
+
     return total_new
 
 
