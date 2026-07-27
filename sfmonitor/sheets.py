@@ -217,11 +217,17 @@ def _with_retry(fn, *args, **kwargs):
     """A run making hundreds of Sheets API calls will eventually hit a
     transient network blip or a rate-limit response -- retry with backoff
     rather than letting one flaky request kill an hours-long backfill.
+
+    Catches requests.exceptions.RequestException (the base class for
+    every requests-library network error, including ReadTimeout and
+    ConnectTimeout) rather than just ConnectionError -- a real run hit a
+    ReadTimeout that ConnectionError alone didn't cover and crashed
+    mid-backfill despite this retry wrapper existing.
     """
     for attempt in range(1, RETRY_ATTEMPTS + 1):
         try:
             return fn(*args, **kwargs)
-        except (requests.exceptions.ConnectionError, gspread.exceptions.APIError):
+        except (requests.exceptions.RequestException, gspread.exceptions.APIError):
             if attempt == RETRY_ATTEMPTS:
                 raise
             time.sleep(RETRY_BASE_DELAY_SECONDS * attempt)
