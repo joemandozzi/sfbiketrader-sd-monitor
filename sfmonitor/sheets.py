@@ -11,6 +11,7 @@ import time
 from datetime import datetime, timezone
 from typing import Optional
 
+import google.auth.exceptions
 import gspread
 import requests
 from google.oauth2.service_account import Credentials
@@ -222,12 +223,22 @@ def _with_retry(fn, *args, **kwargs):
     every requests-library network error, including ReadTimeout and
     ConnectTimeout) rather than just ConnectionError -- a real run hit a
     ReadTimeout that ConnectionError alone didn't cover and crashed
-    mid-backfill despite this retry wrapper existing.
+    mid-backfill despite this retry wrapper existing. Also catches
+    google.auth.exceptions.TransportError: gspread's underlying
+    AuthorizedSession transparently refreshes the OAuth token before a
+    request when it's expired, and that refresh call can itself hit a
+    connection reset -- a *different* exception hierarchy than the
+    requests-library one above, so it needs its own entry here (a real
+    run hit exactly this and crashed despite the fix above).
     """
     for attempt in range(1, RETRY_ATTEMPTS + 1):
         try:
             return fn(*args, **kwargs)
-        except (requests.exceptions.RequestException, gspread.exceptions.APIError):
+        except (
+            requests.exceptions.RequestException,
+            gspread.exceptions.APIError,
+            google.auth.exceptions.TransportError,
+        ):
             if attempt == RETRY_ATTEMPTS:
                 raise
             time.sleep(RETRY_BASE_DELAY_SECONDS * attempt)

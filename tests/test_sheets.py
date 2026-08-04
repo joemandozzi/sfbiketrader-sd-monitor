@@ -1,6 +1,11 @@
 import unittest
+from unittest.mock import MagicMock, patch
 
-from sfmonitor.sheets import compute_frame_counts, frame_keys, sort_match_rows
+import google.auth.exceptions
+import gspread.exceptions
+import requests.exceptions
+
+from sfmonitor.sheets import _with_retry, compute_frame_counts, frame_keys, sort_match_rows
 
 
 def _row(brand, model, price=""):
@@ -88,6 +93,49 @@ class TestSortMatchRows(unittest.TestCase):
         original = list(rows)
         sort_match_rows(rows)
         self.assertEqual(rows, original)
+
+
+def _fake_api_error():
+    response = MagicMock()
+    response.json.return_value = {"error": {"code": 500, "message": "boom", "status": "INTERNAL"}}
+    return gspread.exceptions.APIError(response)
+
+
+@patch("sfmonitor.sheets.time.sleep")  # skip real backoff delays in tests
+class TestWithRetry(unittest.TestCase):
+    def test_returns_result_on_first_success(self, mock_sleep):
+        fn = MagicMock(return_value="ok")
+        self.assertEqual(_with_retry(fn), "ok")
+        mock_sleep.assert_not_called()
+
+    def test_retries_on_requests_exception_then_succeeds(self, mock_sleep):
+        fn = MagicMock(side_effect=[requests.exceptions.ReadTimeout(), "ok"])
+        self.assertEqual(_with_retry(fn), "ok")
+        self.assertEqual(fn.call_count, 2)
+
+    def test_retries_on_google_auth_transport_error_then_succeeds(self, mock_sleep):
+        # A real run hit exactly this during a token refresh mid-backfill --
+        # this is what regressed before the fix that added it to _with_retry.
+        fn = MagicMock(side_effect=[google.auth.exceptions.TransportError("connection reset"), "ok"])
+        self.assertEqual(_with_retry(fn), "ok")
+        self.assertEqual(fn.call_count, 2)
+
+    def test_retries_on_gspread_api_error_then_succeeds(self, mock_sleep):
+        fn = MagicMock(side_effect=[_fake_api_error(), "ok"])
+        self.assertEqual(_with_retry(fn), "ok")
+        self.assertEqual(fn.call_count, 2)
+
+    def test_gives_up_after_max_attempts(self, mock_sleep):
+        fn = MagicMock(side_effect=requests.exceptions.ConnectionError())
+        with self.assertRaises(requests.exceptions.ConnectionError):
+            _with_retry(fn)
+        self.assertEqual(fn.call_count, 5)  # RETRY_ATTEMPTS
+
+    def test_does_not_catch_unrelated_exceptions(self, mock_sleep):
+        fn = MagicMock(side_effect=ValueError("not a network error"))
+        with self.assertRaises(ValueError):
+            _with_retry(fn)
+        self.assertEqual(fn.call_count, 1)
 
 
 if __name__ == "__main__":
