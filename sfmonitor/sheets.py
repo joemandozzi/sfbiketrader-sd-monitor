@@ -248,6 +248,15 @@ def _append_with_retry(worksheet, row: list) -> None:
     _with_retry(worksheet.append_row, row)
 
 
+def _get_all_values_with_retry(worksheet) -> list:
+    # A real run crashed with an uncaught ConnectionResetError here --
+    # every write call went through _with_retry already, but every read
+    # (get_all_values) was calling gspread directly, unprotected. Reads
+    # happen at least once per run (usually several times), so they're
+    # just as likely to hit a transient blip as writes are.
+    return _with_retry(worksheet.get_all_values)
+
+
 def _parse_price(raw: str) -> Optional[int]:
     """Frame-tab prices are Claude's free-text extraction (e.g. "$450",
     "450", "$1,200") -- pull out the first number, ignore anything
@@ -341,13 +350,13 @@ class SheetHandles:
         always derived from its current contents rather than any local
         per-machine file.
         """
-        return self.frames_ws.get_all_values()[1:]
+        return _get_all_values_with_retry(self.frames_ws)[1:]
 
     def get_match_urls(self) -> set:
         """URLs already logged in the San Diego Matches tab (last column),
         same shared-source-of-truth reasoning as get_frame_rows().
         """
-        rows = self.matches_ws.get_all_values()[1:]
+        rows = _get_all_values_with_retry(self.matches_ws)[1:]
         return {row[-1] for row in rows if row[-1]}
 
     def append_frame_row(self, post_timestamp, post_url, brand, model, frame_size, price, condition) -> None:
@@ -370,7 +379,7 @@ class SheetHandles:
         this re-sort happens once at the end rather than re-sorting after
         every single append.
         """
-        rows = self.matches_ws.get_all_values()[1:]
+        rows = _get_all_values_with_retry(self.matches_ws)[1:]
         sorted_rows = sort_match_rows(rows)
         _with_retry(self.matches_ws.clear)
         _with_retry(self.matches_ws.update, [MATCHES_HEADER] + sorted_rows)
@@ -381,7 +390,7 @@ class SheetHandles:
         tab is a derived summary, not an append-only log -- it's fully
         overwritten every run rather than incrementally appended to.
         """
-        rows = self.frames_ws.get_all_values()[1:]  # skip header
+        rows = _get_all_values_with_retry(self.frames_ws)[1:]  # skip header
         values = [FRAME_COUNTS_HEADER] + compute_frame_counts(rows)
         _with_retry(self.frame_counts_ws.clear)
         _with_retry(self.frame_counts_ws.update, values)

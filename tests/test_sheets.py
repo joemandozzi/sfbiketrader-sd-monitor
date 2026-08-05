@@ -5,7 +5,13 @@ import google.auth.exceptions
 import gspread.exceptions
 import requests.exceptions
 
-from sfmonitor.sheets import _with_retry, compute_frame_counts, frame_keys, sort_match_rows
+from sfmonitor.sheets import (
+    _get_all_values_with_retry,
+    _with_retry,
+    compute_frame_counts,
+    frame_keys,
+    sort_match_rows,
+)
 
 
 def _row(brand, model, price=""):
@@ -136,6 +142,20 @@ class TestWithRetry(unittest.TestCase):
         with self.assertRaises(ValueError):
             _with_retry(fn)
         self.assertEqual(fn.call_count, 1)
+
+
+@patch("sfmonitor.sheets.time.sleep")
+class TestGetAllValuesWithRetry(unittest.TestCase):
+    def test_reads_are_retried_too(self, mock_sleep):
+        # A real run crashed with an uncaught ConnectionResetError from a
+        # get_all_values() call that bypassed _with_retry entirely -- every
+        # write path was wrapped, but reads weren't. This confirms reads
+        # now go through the same retry logic.
+        worksheet = MagicMock()
+        worksheet.get_all_values.side_effect = [requests.exceptions.ConnectionError(), [["header"], ["a"]]]
+        result = _get_all_values_with_retry(worksheet)
+        self.assertEqual(result, [["header"], ["a"]])
+        self.assertEqual(worksheet.get_all_values.call_count, 2)
 
 
 if __name__ == "__main__":
