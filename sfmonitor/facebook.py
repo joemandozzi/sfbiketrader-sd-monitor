@@ -108,6 +108,31 @@ class FacebookSession:
         self._browser = self._playwright.chromium.launch(headless=True)
         context_kwargs = {"locale": "en-US", "user_agent": USER_AGENT, "storage_state": str(self.session_path)}
         self._context = self._browser.new_context(**context_kwargs)
+
+        # A session file *existing* isn't enough -- Facebook silently stops
+        # honoring an expired one without ever raising an error, and falls
+        # back to the same unreliable IP-based location the check above is
+        # trying to prevent. On 2026-08-14, a session unrefreshed since
+        # 2026-07-14 did exactly this: quietly served ~580 Midwest listings
+        # mislabeled as San Diego matches, with no crash or warning anywhere
+        # in the run. Load a real page and check the login cookie Facebook
+        # actually returns for *this* request, not just the cookie sitting
+        # in the storage_state file, before trusting anything from search().
+        page = self._context.new_page()
+        try:
+            page.goto("https://www.facebook.com/", wait_until="domcontentloaded", timeout=self.timeout_ms)
+            logged_in = any(c["name"] == "c_user" for c in self._context.cookies("https://www.facebook.com"))
+        finally:
+            page.close()
+        if not logged_in:
+            self._browser.close()
+            raise FacebookLoginRequiredError(
+                f"The Facebook session at {self.session_path} exists but is no longer "
+                "logged in (Facebook sessions expire). Run `python3 facebook_login.py` "
+                "again to refresh it -- without a live login, results silently fall "
+                "back to IP-based location instead of erroring, which is exactly what "
+                "produced ~580 mislabeled Midwest listings on 2026-08-14."
+            )
         return self
 
     def __exit__(self, *exc_info):
